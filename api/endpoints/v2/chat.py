@@ -2,6 +2,7 @@ import importlib
 from fastapi import APIRouter
 from langchain.agents import load_tools, AgentType, initialize_agent
 from langchain_openai import ChatOpenAI
+
 # from langchain_cohere import ChatCohere
 
 from memory.session_memory import SessionMemory
@@ -18,32 +19,33 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/chat",
-             response_model=SimpleChatResponse)
+@router.post("/chat", response_model=SimpleChatResponse)
 def chat_with_persona(body: Chat):
     # Get the persona from the list of personas
-    persona = [persona for persona in personas if persona.get("name", "") == body.persona][0]
+    persona = [
+        persona for persona in personas if persona.get("name", "") == body.persona
+    ][0]
     # Get the system message from the persona
     system_message = persona.get("system_prompt", "")
     logger.info(f"System Message : {system_message}")
 
     llm = ChatOpenAI(
-        model_name="gpt-4-turbo-2024-04-09",
-        temperature=body.temperature,
-        verbose=True
+        model_name="gpt-4-turbo-2024-04-09", temperature=body.temperature, verbose=True
     )
     # llm = ChatCohere(model="command", verbose=True)
     # llm.temperature = body.temperature
     tools = load_tools([], llm=llm)
     tools.extend(load_persona_tools(persona.get("tools", [])))
 
-    agent = initialize_agent(tools=tools,
-                             llm=llm,
-                             agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION,
-                             verbose=True,
-                             return_intermediate_steps=True,
-                             max_iterations=25,
-                             handle_parsing_errors=True)
+    agent = initialize_agent(
+        tools=tools,
+        llm=llm,
+        agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION,
+        verbose=True,
+        return_intermediate_steps=True,
+        max_iterations=25,
+        handle_parsing_errors=True,
+    )
 
     agent_with_chat_history = RunnableWithMessageHistory(
         agent,
